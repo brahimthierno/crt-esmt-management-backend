@@ -1,3 +1,6 @@
+
+// VERSION AVEC INTEGRATION DU PARAMETRAGE SETTINGS
+
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
@@ -27,6 +30,8 @@ app.use('/api/interventions', require('./routes/interventions'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/stock', require('./routes/stock'));
 app.use('/api/emprunts', require('./routes/emprunts'));
+app.use('/api/demandes', require('./routes/demandes'));
+app.use('/api/settings', require('./routes/settings'));
 
 // Route de test
 app.get('/', (req, res) => {
@@ -38,7 +43,9 @@ app.get('/', (req, res) => {
       interventions: '/api/interventions',
       users: '/api/users',
       stock: '/api/stock',
-      emprunts: '/api/emprunts'
+      emprunts: '/api/emprunts',
+      demandes: '/api/demandes',
+      settings: '/api/settings'
     }
   });
 });
