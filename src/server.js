@@ -1,9 +1,9 @@
-
 // VERSION AVEC INTEGRATION DU PARAMETRAGE SETTINGS
 
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const path = require('path'); // POUR SERVIR LES FICHIERS UPLOADÉS
 const connectDB = require('./config/database');
 
 // Charger les variables d'environnement
@@ -17,6 +17,9 @@ const app = express();
 // Middleware Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Servir les fichiers uploadés statiquement
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Enable CORS
 app.use(cors({
