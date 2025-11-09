@@ -29,7 +29,7 @@
 // module.exports = router;
 
 
-// INTEGRATION DE UPLOADS DE FICHIERS
+// INTEGRATION DE UPLOADS DE FICHIERS ET AJOUT DE LA ROUTE SITES
 
 const express = require('express');
 const router = express.Router();
@@ -46,6 +46,8 @@ const {
 } = require('../controllers/interventionController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+
+const { SITES_ESMT, SITES_PAR_BATIMENT } = require('../../constants/sites');
 
 // Toutes les routes nécessitent l'authentification
 router.use(protect);
@@ -69,5 +71,16 @@ router.delete('/:idIntervention/fichiers/:idFichier', supprimerFichier);
 
 // Route pour le téléchargement de fichiers
 router.get('/uploads/:filename', downloadFichier);
+
+// ✅ NOUVELLE ROUTE : Obtenir la liste des sites
+router.get('/sites', (req, res) => {
+  res.status(200).json({
+    success: true,
+    data: {
+      sites: SITES_ESMT,
+      parBatiment: SITES_PAR_BATIMENT
+    }
+  });
+});
 
 module.exports = router;
