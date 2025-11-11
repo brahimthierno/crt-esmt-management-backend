@@ -29,7 +29,7 @@
 // module.exports = router;
 
 
-// INTEGRATION DE UPLOADS DE FICHIERS ET AJOUT DE LA ROUTE SITES
+// INTEGRATION DE UPLOADS DE FICHIERS ET AJOUT DE LA ROUTE SITES ET DATE EFFECTIVES ET DUREE
 
 const express = require('express');
 const router = express.Router();
@@ -42,7 +42,9 @@ const {
   addCommentaire,
   ajouterFichiers,
   supprimerFichier,
-  downloadFichier
+  downloadFichier,
+  getStats,
+  getStatsDuree
 } = require('../controllers/interventionController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -51,6 +53,12 @@ const { SITES_ESMT, SITES_PAR_BATIMENT } = require('../../constants/sites');
 
 // Toutes les routes nécessitent l'authentification
 router.use(protect);
+
+// AJOUT DE LA ROUTE POUR LES STATS GLOBALES
+router.get('/stats/global', getStats);
+
+// ROUTE POUR LES STATS DE DUREE
+router.get('/stats/duree', protect, getStatsDuree);
 
 router
   .route('/')
