@@ -1271,3 +1271,335 @@ exports.getStatsDuree = async (req, res) => {
     });
   }
 };
+
+
+// @desc    Obtenir les statistiques détaillées de durée
+// @route   GET /api/interventions/stats/duree-detaillees
+// @access  Private
+exports.getStatsDureeDetaillees = async (req, res) => {
+  try {
+    let query = { 
+      statut: 'terminee', 
+      dateDebutEffectif: { $exists: true }, 
+      dateFinEffective: { $exists: true } 
+    };
+
+    if (req.user.role !== 'admin') {
+      query.technicien = req.user.id;
+    }
+
+    const interventions = await Intervention.find(query)
+      .populate('technicien', 'nom prenom')
+      .sort({ dateFinEffective: -1 });
+
+    // Calculer les durées par intervention
+    const interventionsAvecDuree = interventions.map(i => {
+      const dureeMs = new Date(i.dateFinEffective) - new Date(i.dateDebutEffectif);
+      const heures = Math.floor(dureeMs / (1000 * 60 * 60));
+      const minutes = Math.floor((dureeMs % (1000 * 60 * 60)) / (1000 * 60));
+      
+      return {
+        id: i._id,
+        titre: i.titre,
+        type: i.type,
+        priorite: i.priorite,
+        technicien: i.technicien ? `${i.technicien.prenom} ${i.technicien.nom}` : 'Non assigné',
+        dateDebut: i.dateDebutEffectif,
+        dateFin: i.dateFinEffective,
+        dureeMs,
+        dureeHeures: heures,
+        dureeMinutes: minutes,
+        dureeFormattee: heures > 0 ? `${heures}h ${minutes}min` : `${minutes}min`
+      };
+    });
+
+    // Statistiques par type
+    const statsParType = {};
+    interventionsAvecDuree.forEach(inter => {
+      if (!statsParType[inter.type]) {
+        statsParType[inter.type] = {
+          count: 0,
+          totalDureeMs: 0,
+          durees: []
+        };
+      }
+      statsParType[inter.type].count++;
+      statsParType[inter.type].totalDureeMs += inter.dureeMs;
+      statsParType[inter.type].durees.push(inter.dureeMs);
+    });
+
+    // Calculer moyennes et médianes par type
+    const statistiquesParType = Object.keys(statsParType).map(type => {
+      const stat = statsParType[type];
+      const moyenneMs = stat.totalDureeMs / stat.count;
+      const moyenneHeures = Math.floor(moyenneMs / (1000 * 60 * 60));
+      const moyenneMinutes = Math.floor((moyenneMs % (1000 * 60 * 60)) / (1000 * 60));
+      
+      // Calculer la médiane
+      const dureesSorted = stat.durees.sort((a, b) => a - b);
+      const medianIndex = Math.floor(dureesSorted.length / 2);
+      const medianeMs = dureesSorted.length % 2 === 0
+        ? (dureesSorted[medianIndex - 1] + dureesSorted[medianIndex]) / 2
+        : dureesSorted[medianIndex];
+      const medianeHeures = Math.floor(medianeMs / (1000 * 60 * 60));
+      const medianeMinutes = Math.floor((medianeMs % (1000 * 60 * 60)) / (1000 * 60));
+      
+      return {
+        type,
+        count: stat.count,
+        moyenne: {
+          ms: moyenneMs,
+          heures: moyenneHeures,
+          minutes: moyenneMinutes,
+          formattee: moyenneHeures > 0 ? `${moyenneHeures}h ${moyenneMinutes}min` : `${moyenneMinutes}min`
+        },
+        mediane: {
+          ms: medianeMs,
+          heures: medianeHeures,
+          minutes: medianeMinutes,
+          formattee: medianeHeures > 0 ? `${medianeHeures}h ${medianeMinutes}min` : `${medianeMinutes}min`
+        }
+      };
+    });
+
+    // Statistiques globales
+    const totalDureeMs = interventionsAvecDuree.reduce((acc, i) => acc + i.dureeMs, 0);
+    const moyenneGlobaleMs = interventionsAvecDuree.length > 0 ? totalDureeMs / interventionsAvecDuree.length : 0;
+    const moyenneGlobaleHeures = Math.floor(moyenneGlobaleMs / (1000 * 60 * 60));
+    const moyenneGlobaleMinutes = Math.floor((moyenneGlobaleMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    // Durée min et max
+    const dureeMin = interventionsAvecDuree.length > 0 
+      ? Math.min(...interventionsAvecDuree.map(i => i.dureeMs))
+      : 0;
+    const dureeMax = interventionsAvecDuree.length > 0 
+      ? Math.max(...interventionsAvecDuree.map(i => i.dureeMs))
+      : 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        interventions: interventionsAvecDuree,
+        statistiquesParType,
+        statistiquesGlobales: {
+          total: interventionsAvecDuree.length,
+          moyenneGlobale: {
+            ms: moyenneGlobaleMs,
+            heures: moyenneGlobaleHeures,
+            minutes: moyenneGlobaleMinutes,
+            formattee: moyenneGlobaleHeures > 0 
+              ? `${moyenneGlobaleHeures}h ${moyenneGlobaleMinutes}min` 
+              : `${moyenneGlobaleMinutes}min`
+          },
+          dureeMin: {
+            ms: dureeMin,
+            heures: Math.floor(dureeMin / (1000 * 60 * 60)),
+            minutes: Math.floor((dureeMin % (1000 * 60 * 60)) / (1000 * 60))
+          },
+          dureeMax: {
+            ms: dureeMax,
+            heures: Math.floor(dureeMax / (1000 * 60 * 60)),
+            minutes: Math.floor((dureeMax % (1000 * 60 * 60)) / (1000 * 60))
+          }
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Obtenir l'évolution des durées dans le temps
+// @route   GET /api/interventions/stats/evolution-durees
+// @access  Private
+exports.getEvolutionDurees = async (req, res) => {
+  try {
+    const { periode = '30' } = req.query; // Par défaut 30 jours
+    const joursEnArriere = parseInt(periode);
+    
+    const dateDebut = new Date();
+    dateDebut.setDate(dateDebut.getDate() - joursEnArriere);
+
+    let query = { 
+      statut: 'terminee', 
+      dateDebutEffectif: { $exists: true }, 
+      dateFinEffective: { $exists: true, $gte: dateDebut }
+    };
+
+    if (req.user.role !== 'admin') {
+      query.technicien = req.user.id;
+    }
+
+    const interventions = await Intervention.find(query)
+      .sort({ dateFinEffective: 1 });
+
+    // Grouper par jour
+    const evolutionParJour = {};
+    interventions.forEach(i => {
+      const date = new Date(i.dateFinEffective).toISOString().split('T')[0];
+      const dureeMs = new Date(i.dateFinEffective) - new Date(i.dateDebutEffectif);
+      const dureeHeures = dureeMs / (1000 * 60 * 60);
+      
+      if (!evolutionParJour[date]) {
+        evolutionParJour[date] = {
+          date,
+          interventions: [],
+          totalDureeMs: 0,
+          count: 0
+        };
+      }
+      
+      evolutionParJour[date].interventions.push({
+        titre: i.titre,
+        type: i.type,
+        dureeMs,
+        dureeHeures
+      });
+      evolutionParJour[date].totalDureeMs += dureeMs;
+      evolutionParJour[date].count++;
+    });
+
+    // Convertir en tableau et calculer moyennes
+    const evolution = Object.values(evolutionParJour).map(jour => ({
+      date: jour.date,
+      count: jour.count,
+      moyenneDureeMs: jour.totalDureeMs / jour.count,
+      moyenneDureeHeures: (jour.totalDureeMs / jour.count) / (1000 * 60 * 60),
+      totalDureeHeures: jour.totalDureeMs / (1000 * 60 * 60),
+      interventions: jour.interventions
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        periode: joursEnArriere,
+        evolution
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Exporter les données en CSV
+// @route   GET /api/interventions/stats/export
+// @access  Private
+exports.exportDonnees = async (req, res) => {
+  try {
+    let query = { 
+      statut: 'terminee', 
+      dateDebutEffectif: { $exists: true }, 
+      dateFinEffective: { $exists: true } 
+    };
+
+    if (req.user.role !== 'admin') {
+      query.technicien = req.user.id;
+    }
+
+    const interventions = await Intervention.find(query)
+      .populate('technicien', 'nom prenom')
+      .sort({ dateFinEffective: -1 });
+
+    // Créer le CSV
+    const csvHeader = 'ID,Titre,Type,Priorité,Technicien,Date Début,Heure Début,Date Fin,Heure Fin,Durée (minutes),Durée (heures),Lieu,Matériel\n';
+    
+    const csvRows = interventions.map(i => {
+      const dureeMs = new Date(i.dateFinEffective) - new Date(i.dateDebutEffectif);
+      const dureeMinutes = Math.floor(dureeMs / (1000 * 60));
+      const dureeHeures = (dureeMs / (1000 * 60 * 60)).toFixed(2);
+      
+      return [
+        i._id,
+        `"${i.titre.replace(/"/g, '""')}"`,
+        i.type,
+        i.priorite,
+        i.technicien ? `"${i.technicien.prenom} ${i.technicien.nom}"` : 'Non assigné',
+        new Date(i.dateDebutEffectif).toLocaleDateString('fr-FR'),
+        i.heureDebutEffectif || '',
+        new Date(i.dateFinEffective).toLocaleDateString('fr-FR'),
+        i.heureFinEffective || '',
+        dureeMinutes,
+        dureeHeures,
+        `"${i.lieu}"`,
+        `"${i.materiel.replace(/"/g, '""')}"`
+      ].join(',');
+    }).join('\n');
+
+    const csv = csvHeader + csvRows;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=interventions_${new Date().toISOString().split('T')[0]}.csv`);
+    res.send('\uFEFF' + csv); // BOM pour Excel UTF-8
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
+// @desc    Créer une nouvelle intervention
+// @route   POST /api/interventions
+// @access  Private (Admin only)
+exports.createIntervention = async (req, res) => {
+  try {
+    const interventionData = { ...req.body };
+    
+    // Si l'admin upload des fichiers lors de la création
+    if (req.files && req.files.length > 0 && req.user.role === 'admin') {
+      const nouveauxFichiers = req.files.map(file => {
+        let type = 'autre';
+        if (file.mimetype.startsWith('image/')) {
+          type = 'image';
+        } else if (
+          file.mimetype === 'application/pdf' ||
+          file.mimetype === 'application/msword' ||
+          file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ) {
+          type = 'document';
+        }
+
+        return {
+          nom: file.originalname,
+          url: `/uploads/${file.filename}`,
+          type: type,
+          taille: file.size,
+          uploadedBy: req.user.id
+        };
+      });
+      interventionData.fichiers = nouveauxFichiers;
+    }
+
+    const intervention = await Intervention.create(interventionData);
+
+    const populatedIntervention = await Intervention.findById(intervention._id)
+      .populate('technicien', 'nom prenom role username')
+      .populate('fichiers.uploadedBy', 'nom prenom');
+
+    res.status(201).json({
+      success: true,
+      data: populatedIntervention
+    });
+  } catch (error) {
+    // Nettoyer les fichiers uploadés en cas d'erreur
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        const filePath = path.join(__dirname, '..', 'uploads', file.filename);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      });
+    }
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};

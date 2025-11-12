@@ -44,7 +44,12 @@ const {
   supprimerFichier,
   downloadFichier,
   getStats,
-  getStatsDuree
+  getStatsDuree,
+
+  // POUR LES STATISTIQUES DES INTERVENTIONS
+  getStatsDureeDetaillees, 
+  getEvolutionDurees, 
+  exportDonnees
 } = require('../controllers/interventionController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -59,6 +64,14 @@ router.get('/stats/global', getStats);
 
 // ROUTE POUR LES STATS DE DUREE
 router.get('/stats/duree', protect, getStatsDuree);
+
+
+router.get('/stats/duree-detaillees', protect, getStatsDureeDetaillees);
+router.get('/stats/evolution-durees', protect, getEvolutionDurees);
+router.get('/stats/export', protect, exportDonnees);
+
+// Route pour le téléchargement de fichiers
+router.get('/uploads/:filename', downloadFichier);
 
 router
   .route('/')
@@ -76,9 +89,6 @@ router.post('/:id/commentaires', addCommentaire);
 // NOUVELLES ROUTES POUR LES FICHIERS
 router.post('/:id/fichiers', upload.array('fichiers', 5), ajouterFichiers);
 router.delete('/:idIntervention/fichiers/:idFichier', supprimerFichier);
-
-// Route pour le téléchargement de fichiers
-router.get('/uploads/:filename', downloadFichier);
 
 // ✅ NOUVELLE ROUTE : Obtenir la liste des sites
 router.get('/sites', (req, res) => {
