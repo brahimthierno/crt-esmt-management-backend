@@ -121,12 +121,9 @@ const {
   downloadFichier,
   getStats,
   getStatsDuree,
-
-  // POUR LES STATISTIQUES DES INTERVENTIONS
   getStatsDureeDetaillees, 
   getEvolutionDurees, 
   exportDonnees,
-  // ✅ NOUVELLE FONCTION : Valider une intervention (admin)
   validerIntervention
 } = require('../controllers/interventionController');
 const { protect, authorize } = require('../middleware/auth');
