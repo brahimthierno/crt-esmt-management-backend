@@ -297,7 +297,7 @@
 
 const express = require('express');
 const router = express.Router();
-const Demande = require('../models/demande');
+const Demande = require('../models/Demande');
 const Intervention = require('../models/Intervention');
 const nodemailer = require('nodemailer');
 
