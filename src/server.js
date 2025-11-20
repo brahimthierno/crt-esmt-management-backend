@@ -296,6 +296,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
 const connectDB = require('./config/database');
+const mongoose = require('mongoose');
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -306,7 +307,7 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
-  'https://votre-frontend.vercel.app', // Remplacez par votre URL Vercel
+  'https://khalilapp.netlify.app', // Remplacez par votre URL Vercel
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
