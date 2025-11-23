@@ -4198,6 +4198,147 @@ exports.getStatsDuree = async (req, res) => {
   }
 };
 
+// // @desc    Obtenir les statistiques détaillées de durée
+// // @route   GET /api/interventions/stats/duree-detaillees
+// // @access  Private
+// exports.getStatsDureeDetaillees = async (req, res) => {
+//   try {
+//     let query = { 
+//       statut: 'terminee', 
+//       dateDebutEffectif: { $exists: true }, 
+//       dateFinEffective: { $exists: true } 
+//     };
+
+//     if (req.user.role !== 'admin') {
+//       query.technicien = req.user.id;
+//     }
+
+//     const interventions = await Intervention.find(query)
+//       .populate('technicien', 'nom prenom')
+//       .sort({ dateFinEffective: -1 });
+
+//     // Calculer les durées par intervention
+//     const interventionsAvecDuree = interventions.map(i => {
+//       const dureeMs = new Date(i.dateFinEffective) - new Date(i.dateDebutEffectif);
+//       const heures = Math.floor(dureeMs / (1000 * 60 * 60));
+//       const minutes = Math.floor((dureeMs % (1000 * 60 * 60)) / (1000 * 60));
+      
+//       return {
+//         id: i._id,
+//         titre: i.titre,
+//         type: i.type,
+//         priorite: i.priorite,
+//         technicien: i.technicien ? `${i.technicien.prenom} ${i.technicien.nom}` : 'Non assigné',
+//         dateDebut: i.dateDebutEffectif,
+//         dateFin: i.dateFinEffective,
+//         dureeMs,
+//         dureeHeures: heures,
+//         dureeMinutes: minutes,
+//         dureeFormattee: heures > 0 ? `${heures}h ${minutes}min` : `${minutes}min`
+//       };
+//     });
+
+//     // Statistiques par type
+//     const statsParType = {};
+//     interventionsAvecDuree.forEach(inter => {
+//       if (!statsParType[inter.type]) {
+//         statsParType[inter.type] = {
+//           count: 0,
+//           totalDureeMs: 0,
+//           durees: []
+//         };
+//       }
+//       statsParType[inter.type].count++;
+//       statsParType[inter.type].totalDureeMs += inter.dureeMs;
+//       statsParType[inter.type].durees.push(inter.dureeMs);
+//     });
+
+//     // Calculer moyennes et médianes par type
+//     const statistiquesParType = Object.keys(statsParType).map(type => {
+//       const stat = statsParType[type];
+//       const moyenneMs = stat.totalDureeMs / stat.count;
+//       const moyenneHeures = Math.floor(moyenneMs / (1000 * 60 * 60));
+//       const moyenneMinutes = Math.floor((moyenneMs % (1000 * 60 * 60)) / (1000 * 60));
+      
+//       // Calculer la médiane
+//       const dureesSorted = stat.durees.sort((a, b) => a - b);
+//       const medianIndex = Math.floor(dureesSorted.length / 2);
+//       const medianeMs = dureesSorted.length % 2 === 0
+//         ? (dureesSorted[medianIndex - 1] + dureesSorted[medianIndex]) / 2
+//         : dureesSorted[medianIndex];
+//       const medianeHeures = Math.floor(medianeMs / (1000 * 60 * 60));
+//       const medianeMinutes = Math.floor((medianeMs % (1000 * 60 * 60)) / (1000 * 60));
+      
+//       return {
+//         type,
+//         count: stat.count,
+//         moyenne: {
+//           ms: moyenneMs,
+//           heures: moyenneHeures,
+//           minutes: moyenneMinutes,
+//           formattee: moyenneHeures > 0 ? `${moyenneHeures}h ${moyenneMinutes}min` : `${moyenneMinutes}min`
+//         },
+//         mediane: {
+//           ms: medianeMs,
+//           heures: medianeHeures,
+//           minutes: medianeMinutes,
+//           formattee: medianeHeures > 0 ? `${medianeHeures}h ${medianeMinutes}min` : `${medianeMinutes}min`
+//         }
+//       };
+//     });
+
+//     // Statistiques globales
+//     const totalDureeMs = interventionsAvecDuree.reduce((acc, i) => acc + i.dureeMs, 0);
+//     const moyenneGlobaleMs = interventionsAvecDuree.length > 0 ? totalDureeMs / interventionsAvecDuree.length : 0;
+//     const moyenneGlobaleHeures = Math.floor(moyenneGlobaleMs / (1000 * 60 * 60));
+//     const moyenneGlobaleMinutes = Math.floor((moyenneGlobaleMs % (1000 * 60 * 60)) / (1000 * 60));
+
+//     // Durée min et max
+//     const dureeMin = interventionsAvecDuree.length > 0 
+//       ? Math.min(...interventionsAvecDuree.map(i => i.dureeMs))
+//       : 0;
+//     const dureeMax = interventionsAvecDuree.length > 0 
+//       ? Math.max(...interventionsAvecDuree.map(i => i.dureeMs))
+//       : 0;
+
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         interventions: interventionsAvecDuree,
+//         statistiquesParType,
+//         statistiquesGlobales: {
+//           total: interventionsAvecDuree.length,
+//           moyenneGlobale: {
+//             ms: moyenneGlobaleMs,
+//             heures: moyenneGlobaleHeures,
+//             minutes: moyenneGlobaleMinutes,
+//             formattee: moyenneGlobaleHeures > 0 
+//               ? `${moyenneGlobaleHeures}h ${moyenneGlobaleMinutes}min` 
+//               : `${moyenneGlobaleMinutes}min`
+//           },
+//           dureeMin: {
+//             ms: dureeMin,
+//             heures: Math.floor(dureeMin / (1000 * 60 * 60)),
+//             minutes: Math.floor((dureeMin % (1000 * 60 * 60)) / (1000 * 60))
+//           },
+//           dureeMax: {
+//             ms: dureeMax,
+//             heures: Math.floor(dureeMax / (1000 * 60 * 60)),
+//             minutes: Math.floor((dureeMax % (1000 * 60 * 60)) / (1000 * 60))
+//           }
+//         }
+//       }
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: error.message
+//     });
+//   }
+// };
+
+// NOUVEAU POUR BIEN FORMATER LES DUREES DES INTERVENTIONS
+
 // @desc    Obtenir les statistiques détaillées de durée
 // @route   GET /api/interventions/stats/duree-detaillees
 // @access  Private
@@ -4217,11 +4358,41 @@ exports.getStatsDureeDetaillees = async (req, res) => {
       .populate('technicien', 'nom prenom')
       .sort({ dateFinEffective: -1 });
 
+    // ✅ FONCTION UTILITAIRE POUR FORMATER LES DURÉES
+    const formatDuree = (dureeMs) => {
+      const totalHeures = Math.floor(dureeMs / (1000 * 60 * 60));
+      const minutes = Math.floor((dureeMs % (1000 * 60 * 60)) / (1000 * 60));
+      const secondes = Math.floor((dureeMs % (1000 * 60)) / 1000);
+      
+      let jours = 0;
+      let heures = totalHeures;
+      
+      // Calculer les jours si heures >= 24
+      if (totalHeures >= 24) {
+        jours = Math.floor(totalHeures / 24);
+        heures = totalHeures % 24;
+      }
+      
+      return {
+        ms: dureeMs,
+        jours,
+        heures,
+        minutes,
+        secondes,
+        formattee: jours > 0 
+          ? (heures > 0 ? `${jours}j ${heures}h` : `${jours}j`)
+          : heures > 0 
+            ? (minutes > 0 ? `${heures}h ${minutes}min` : `${heures}h`)
+            : minutes > 0
+              ? (secondes > 0 ? `${minutes}min ${secondes}s` : `${minutes}min`)
+              : `${secondes}s`
+      };
+    };
+
     // Calculer les durées par intervention
     const interventionsAvecDuree = interventions.map(i => {
       const dureeMs = new Date(i.dateFinEffective) - new Date(i.dateDebutEffectif);
-      const heures = Math.floor(dureeMs / (1000 * 60 * 60));
-      const minutes = Math.floor((dureeMs % (1000 * 60 * 60)) / (1000 * 60));
+      const dureeFormatee = formatDuree(dureeMs);
       
       return {
         id: i._id,
@@ -4232,9 +4403,10 @@ exports.getStatsDureeDetaillees = async (req, res) => {
         dateDebut: i.dateDebutEffectif,
         dateFin: i.dateFinEffective,
         dureeMs,
-        dureeHeures: heures,
-        dureeMinutes: minutes,
-        dureeFormattee: heures > 0 ? `${heures}h ${minutes}min` : `${minutes}min`
+        dureeJours: dureeFormatee.jours,
+        dureeHeures: dureeFormatee.heures,
+        dureeMinutes: dureeFormatee.minutes,
+        dureeFormattee: dureeFormatee.formattee
       };
     });
 
@@ -4257,8 +4429,7 @@ exports.getStatsDureeDetaillees = async (req, res) => {
     const statistiquesParType = Object.keys(statsParType).map(type => {
       const stat = statsParType[type];
       const moyenneMs = stat.totalDureeMs / stat.count;
-      const moyenneHeures = Math.floor(moyenneMs / (1000 * 60 * 60));
-      const moyenneMinutes = Math.floor((moyenneMs % (1000 * 60 * 60)) / (1000 * 60));
+      const moyenneFormatee = formatDuree(moyenneMs);
       
       // Calculer la médiane
       const dureesSorted = stat.durees.sort((a, b) => a - b);
@@ -4266,32 +4437,20 @@ exports.getStatsDureeDetaillees = async (req, res) => {
       const medianeMs = dureesSorted.length % 2 === 0
         ? (dureesSorted[medianIndex - 1] + dureesSorted[medianIndex]) / 2
         : dureesSorted[medianIndex];
-      const medianeHeures = Math.floor(medianeMs / (1000 * 60 * 60));
-      const medianeMinutes = Math.floor((medianeMs % (1000 * 60 * 60)) / (1000 * 60));
+      const medianeFormatee = formatDuree(medianeMs);
       
       return {
         type,
         count: stat.count,
-        moyenne: {
-          ms: moyenneMs,
-          heures: moyenneHeures,
-          minutes: moyenneMinutes,
-          formattee: moyenneHeures > 0 ? `${moyenneHeures}h ${moyenneMinutes}min` : `${moyenneMinutes}min`
-        },
-        mediane: {
-          ms: medianeMs,
-          heures: medianeHeures,
-          minutes: medianeMinutes,
-          formattee: medianeHeures > 0 ? `${medianeHeures}h ${medianeMinutes}min` : `${medianeMinutes}min`
-        }
+        moyenne: moyenneFormatee,
+        mediane: medianeFormatee
       };
     });
 
     // Statistiques globales
     const totalDureeMs = interventionsAvecDuree.reduce((acc, i) => acc + i.dureeMs, 0);
     const moyenneGlobaleMs = interventionsAvecDuree.length > 0 ? totalDureeMs / interventionsAvecDuree.length : 0;
-    const moyenneGlobaleHeures = Math.floor(moyenneGlobaleMs / (1000 * 60 * 60));
-    const moyenneGlobaleMinutes = Math.floor((moyenneGlobaleMs % (1000 * 60 * 60)) / (1000 * 60));
+    const moyenneGlobale = formatDuree(moyenneGlobaleMs);
 
     // Durée min et max
     const dureeMin = interventionsAvecDuree.length > 0 
@@ -4308,24 +4467,9 @@ exports.getStatsDureeDetaillees = async (req, res) => {
         statistiquesParType,
         statistiquesGlobales: {
           total: interventionsAvecDuree.length,
-          moyenneGlobale: {
-            ms: moyenneGlobaleMs,
-            heures: moyenneGlobaleHeures,
-            minutes: moyenneGlobaleMinutes,
-            formattee: moyenneGlobaleHeures > 0 
-              ? `${moyenneGlobaleHeures}h ${moyenneGlobaleMinutes}min` 
-              : `${moyenneGlobaleMinutes}min`
-          },
-          dureeMin: {
-            ms: dureeMin,
-            heures: Math.floor(dureeMin / (1000 * 60 * 60)),
-            minutes: Math.floor((dureeMin % (1000 * 60 * 60)) / (1000 * 60))
-          },
-          dureeMax: {
-            ms: dureeMax,
-            heures: Math.floor(dureeMax / (1000 * 60 * 60)),
-            minutes: Math.floor((dureeMax % (1000 * 60 * 60)) / (1000 * 60))
-          }
+          moyenneGlobale,
+          dureeMin: formatDuree(dureeMin),
+          dureeMax: formatDuree(dureeMax)
         }
       }
     });
@@ -4336,6 +4480,8 @@ exports.getStatsDureeDetaillees = async (req, res) => {
     });
   }
 };
+
+
 
 // @desc    Obtenir l'évolution des durées dans le temps
 // @route   GET /api/interventions/stats/evolution-durees
