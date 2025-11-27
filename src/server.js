@@ -463,6 +463,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
   'https://khalilapp.netlify.app',
+  'https://crt-esmt-management-frontend.vercel.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
