@@ -1,3 +1,4 @@
+/*
 const express = require('express');
 const router = express.Router();
 const {
@@ -18,6 +19,50 @@ const { protect, authorize } = require('../middleware/auth');
 router.put('/profile/me', protect, updateOwnProfile);
 
 // Toutes les routes nécessitent l'authentification et le rôle admin
+router.use(protect);
+router.use(authorize('admin'));
+
+router.get('/stats/techniciens', getTechniciensStats);
+
+router
+  .route('/')
+  .get(getUsers)
+  .post(createUser);
+
+router
+  .route('/:id')
+  .get(getUser)
+  .put(updateUser)
+  .delete(deleteUser);
+
+router.put('/:id/password', changePassword);
+
+module.exports = router;
+*/
+
+const express = require('express');
+const router = express.Router();
+const {
+  getUsers,
+  getUser,
+  createUser,
+  updateUser,
+  deleteUser,
+  changePassword,
+  getTechniciensStats,
+  updateOwnProfile,
+  deleteProfilePhoto // ✅ IMPORT AJOUTÉ
+} = require('../controllers/userController');
+const { protect, authorize } = require('../middleware/auth');
+const uploadProfile = require('../middleware/uploadProfile'); // ✅ IMPORT AJOUTÉ
+
+// ✅ ROUTE POUR METTRE À JOUR SON PROPRE PROFIL AVEC PHOTO
+router.put('/profile/me', protect, uploadProfile.single('photo'), updateOwnProfile);
+
+// ✅ ROUTE POUR SUPPRIMER LA PHOTO DE PROFIL
+router.delete('/profile/photo', protect, deleteProfilePhoto);
+
+// Toutes les routes suivantes nécessitent l'authentification et le rôle admin
 router.use(protect);
 router.use(authorize('admin'));
 
