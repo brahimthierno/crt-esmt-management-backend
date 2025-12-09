@@ -997,16 +997,30 @@ const interventionSchema = new mongoose.Schema({
     }
   }],
   commentaires: [{
-    auteur: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    texte: String,
-    date: {
-      type: Date,
-      default: Date.now
-    }
-  }]
+  auteur: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  texte: {
+    type: String,
+    required: [true, 'Le texte du commentaire est requis'],
+    trim: true,
+    maxlength: [1000, 'Le commentaire ne peut pas dépasser 1000 caractères']
+  },
+  date: {
+    type: Date,
+    default: Date.now
+  },
+  modifie: {
+    type: Boolean,
+    default: false
+  },
+  dateModification: {
+    type: Date,
+    default: null
+  }
+}]
 }, {
   timestamps: true
 });

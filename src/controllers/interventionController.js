@@ -3869,6 +3869,121 @@ exports.addCommentaire = async (req, res) => {
   }
 };
 
+// @desc    Supprimer un commentaire d'une intervention
+// @route   DELETE /api/interventions/:idIntervention/commentaires/:idCommentaire
+// @access  Private
+exports.deleteCommentaire = async (req, res) => {
+  try {
+    const intervention = await Intervention.findById(req.params.idIntervention);
+
+    if (!intervention) {
+      return res.status(404).json({
+        success: false,
+        message: 'Intervention non trouvée'
+      });
+    }
+
+    const commentaire = intervention.commentaires.id(req.params.idCommentaire);
+    
+    if (!commentaire) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commentaire non trouvé'
+      });
+    }
+
+    // Seul l'auteur du commentaire ou un admin peut le supprimer
+    if (req.user.role !== 'admin' && commentaire.auteur.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Non autorisé à supprimer ce commentaire'
+      });
+    }
+
+    // Supprimer le commentaire
+    intervention.commentaires.pull({ _id: req.params.idCommentaire });
+    await intervention.save();
+
+    // Repopuler les relations
+    const updatedIntervention = await Intervention.findById(req.params.idIntervention)
+      .populate('technicien', 'nom prenom role username')
+      .populate('validePar', 'nom prenom role')
+      .populate('fichiers.uploadedBy', 'nom prenom')
+      .populate('commentaires.auteur', 'nom prenom role');
+
+    res.status(200).json({
+      success: true,
+      data: updatedIntervention,
+      message: 'Commentaire supprimé avec succès'
+    });
+  } catch (error) {
+    console.error('❌ Erreur deleteCommentaire:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Modifier un commentaire (optionnel)
+// @route   PUT /api/interventions/:idIntervention/commentaires/:idCommentaire
+// @access  Private
+exports.updateCommentaire = async (req, res) => {
+  try {
+    const intervention = await Intervention.findById(req.params.idIntervention);
+
+    if (!intervention) {
+      return res.status(404).json({
+        success: false,
+        message: 'Intervention non trouvée'
+      });
+    }
+
+    const commentaire = intervention.commentaires.id(req.params.idCommentaire);
+    
+    if (!commentaire) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commentaire non trouvé'
+      });
+    }
+
+    // Seul l'auteur du commentaire peut le modifier
+    if (commentaire.auteur.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Non autorisé à modifier ce commentaire'
+      });
+    }
+
+    // Modifier le commentaire
+    commentaire.texte = req.body.texte;
+    commentaire.modifie = true;
+    commentaire.dateModification = Date.now();
+    
+    await intervention.save();
+
+    // Repopuler les relations
+    const updatedIntervention = await Intervention.findById(req.params.idIntervention)
+      .populate('technicien', 'nom prenom role username')
+      .populate('validePar', 'nom prenom role')
+      .populate('fichiers.uploadedBy', 'nom prenom')
+      .populate('commentaires.auteur', 'nom prenom role');
+
+    res.status(200).json({
+      success: true,
+      data: updatedIntervention,
+      message: 'Commentaire modifié avec succès'
+    });
+  } catch (error) {
+    console.error('❌ Erreur updateCommentaire:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // @desc    Ajouter des fichiers à une intervention
 // @route   POST /api/interventions/:id/fichiers
 // @access  Private

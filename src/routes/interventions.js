@@ -251,6 +251,8 @@ const {
   getStatsDureeDetaillees, 
   getEvolutionDurees, 
   exportDonnees,
+  deleteCommentaire,
+  updateCommentaire,
   validerIntervention
 } = require('../controllers/interventionController');
 const { protect, authorize } = require('../middleware/auth');
@@ -331,6 +333,12 @@ router.get('/stats/duree', getStatsDuree);
 router.get('/stats/duree-detaillees', getStatsDureeDetaillees);
 router.get('/stats/evolution-durees', getEvolutionDurees);
 router.get('/stats/export', exportDonnees);
+
+
+// Routes pour les commentaires
+router.delete('/:idIntervention/commentaires/:idCommentaire', deleteCommentaire);
+router.put('/:idIntervention/commentaires/:idCommentaire', updateCommentaire);
+
 
 // ✅ CRITIQUE : Route de téléchargement de fichiers AVANT les routes avec :id
 router.get('/uploads/:filename', downloadFichier);
